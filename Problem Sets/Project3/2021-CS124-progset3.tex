@@ -1,0 +1,295 @@
+\documentclass[11pt]{article}
+% \pagestyle{empty}
+
+\setlength{\oddsidemargin}{-0.25 in}
+\setlength{\evensidemargin}{-0.25 in}
+\setlength{\topmargin}{-0.9 in}
+\setlength{\textwidth}{7.0 in}
+\setlength{\textheight}{9.0 in}
+\setlength{\headsep}{0.75 in}
+\setlength{\parindent}{0.3 in}
+\setlength{\parskip}{0.1 in}
+\usepackage{epsf}
+\usepackage{times}
+\usepackage{mathptm}
+
+\def\O{\mathop{\smash{O}}\nolimits}
+\def\o{\mathop{\smash{o}}\nolimits}
+\newcommand{\e}{{\rm e}}
+\newcommand{\R}{{\bf R}}
+\newcommand{\Z}{{\bf Z}}
+
+
+\begin{document}
+	
+	\section*{CS 124 Programming Assignment 3: Spring 2021}
+ 		
+	\textbf{Your name(s) (up to two):}\footnote{If you work with a partner, you should both submit on Gradescope.}
+		
+	\textbf{Collaborators:} (You shouldn't have any collaborators but the up-to-two of you, but tell us if you did.)
+
+	\textbf{No. of late days used on previous psets: }\\
+	\textbf{No. of late days used after including this pset: }
+
+Homework is due Wednesday 2021-04-28 at 11:59pm ET. You are allowed up to {\bf twelve} (college)/{\bf forty} (extension school) late days through the semester, but the number of late days you take on each assignment must be a nonnegative integer at most {\bf two} (college)/{\bf four} (extension school).
+
+For this programming assignment, you will implement a number of
+heuristics for solving the {\sc Number Partition} problem, which is
+(of course) NP-complete.  As input, the number partition problem
+takes a sequence $A = (a_1,a_2,\ldots,a_n)$ of non-negative integers.  The output is a sequence $S = (s_1,s_2,\ldots,s_n)$ 
+of signs $s_i \in \{-1,+1\}$ such that the {\em residue}
+$$u = \left | \sum_{i=1}^n s_i a_i \right |$$ is minimized.  Another
+way to view the problem is the goal is to split the set (or multi-set)
+of numbers given by $A$ into two subsets $A_1$ and $A_2$ with the sums
+of $A_1$ and $A_2$ being as close to equal as possible.
+The absolute value of the difference of the sums is the
+residue.
+
+As a warm-up exercise, you will first prove that even though Number
+Partition is NP-complete, it can be solved in {\em pseudo-polynomial} time.
+That is, suppose the sequence of integers in $A$ sum up to some number
+$b$.  Then each of the numbers in $A$ has at most $\log b$ bits,
+so a polynomial time algorithm would take time polynomial in 
+$n \log b$.  Instead you should find a dynamic programming algorithm
+that takes time polynomial in $nb$.  
+
+\smallskip 
+{\bf Give a dynamic programming solution to the Number Partition
+problem.}
+\smallskip 
+
+One {\em deterministic} heuristic for the Number Partition problem is the
+Karmarkar-Karp algorithm, or the KK algorithm.  This approach uses
+{\em differencing}.  The differencing idea is to take two elements
+from $A$, call them $a_i$ and $a_j$, and replace the larger by $|a_i -
+a_j|$ while replacing the smaller by 0.  The intuition is that if we
+decide to put $a_i$ and $a_j$ in different sets, then it is as though
+instead of having two elements we have one element of size $|a_i - a_j|$.  
+An algorithm based
+on differencing repeatedly takes two elements from $A$ and performs a
+differencing until there is only one element left; this element equals
+an attainable residue.  (A sequence of signs $s_i$ that yields this
+residue can be determined from the differencing operations performed
+in linear time by two-coloring the graph $(A,E)$ that arises, where
+$E$ is the set of pairs $(a_i,a_j)$ that are used in the differencing
+steps.  You will {\em not need} to construct the $s_i$ for this assignment,
+although you may find it helpful to do so for debugging purposes.)
+
+The Karmarkar-Karp algorithm repeatedly takes the
+largest two elements remaining in $A$ at each step and uses
+differencing on
+them.  For example, if $A$ is intially $(10,8,7,6,5)$, then the KK
+algorithm proceeds as follows:
+\begin{eqnarray*}
+(10,8,7,6,5) & \rightarrow & (2,0,7,6,5) \\
+ & \rightarrow & (2,0,1,0,5) \\
+ & \rightarrow & (0,0,1,0,3) \\
+ & \rightarrow & (0,0,0,0,2) \\
+\end{eqnarray*}
+Hence the KK algorithm returns a residue of 2.  However, the best possible
+residue for the example is 0.
+
+\smallskip 
+{\bf Explain briefly how the Karmarkar-Karp algorithm can be 
+implemented in $O(n \log n)$ steps, assuming the values in 
+$A$ are small enough that arithmetic operations take one step.}
+\smallskip 
+
+You will compare the Karmarkar-Karp algorithm and a variety of
+randomized heuristic algorithms on random input sets.  Let us first
+discuss two ways to represent solutions to the problem and the state
+space based on these representations.  Then we discuss heuristic
+search algorithms you will use.
+
+The standard representation of a solution is simply as a sequence $S$
+of $+1$ and $-1$ values.  A random solution can be obtained by
+generating a random sequence of $n$ such values.  Thinking of all
+possible solutions as a state space, a natural way to define neighbors
+of a solution $S$ is as the set of all solutions that differ from $S$
+in either one or two places.  This has a natural interpretation if we
+think of the $+1$ and $-1$ values as determining two subsets $A_1$
+and $A_2$ of $A$.  Moving from $S$ to a neighbor is accomplished
+either by moving one or two elements from $A_1$ to $A_2$, or moving
+one or two elements from $A_2$ to $A_1$, or swapping a pair of
+elements where one is in $A_1$ and one is in $A_2$.
+
+A {\em random move} on this state space can be defined as follows.
+Choose two random indices $i$ and $j$ from $[1,n]$ with $i
+\neq j$.  Set $s_i$ to $-s_i$ and with probability $1/2$, set $s_j$ to
+$-s_j$.  That is, with probability $1/2$, we just try to move one element
+to the other set;  with probability $1/2$, we try to swap two elements.
+(The two elements we try to swap may be from the same set or different sets.)
+
+An alternative way to represent a solution called {\em
+prepartitioning} is as follows.  We represent a solution by a sequence
+$P = \{p_1,p_2,\ldots,p_n\}$ where $p_i \in \{1,\ldots,n\}$.  The
+sequence $P$ represents a prepartitioning of the elements of $A$, in
+the following way: if $p_i = p_j$, then we enforce the restriction
+that $a_i$ and $a_j$ have the same sign.  Equivalently, if $p_i =
+p_j$, then $a_i$ and $a_j$ both lie in the same subset, either $A_1$
+or $A_2$.  You can think of prepartitioning as being the opposite of
+differencing:  where differencing splits two elements apart, prepartioning
+is a way of forcing elements together.  
+
+We turn a solution of this form into a solution in the standard
+form using two steps:  
+\begin{itemize}
+\item We derive a new sequence $A'$ from $A$ which enforces the
+prepartioning from $P$.  Essentially $A'$ is derived by resetting
+$a_i$ to be the sum of all values $j$ with $p_j = i$, using for
+example the following pseudocode:
+
+\smallskip
+\begin{tabbing}
+\quad \quad \quad \= $A' =$ \= $(0,0,\ldots,0)$ \\
+\> {\bf for} $j = 1$ to $n$ \\
+\> \> $a'_{p_j} = a'_{p_j} + a_j$  \\
+\end{tabbing}
+\smallskip
+
+\item We run the KK heuristic algorithm on the result $A'$.
+\end{itemize}
+
+For example, if $A$ is initially $(10,8,7,6,5)$, the solution $P = (1,2,2,4,5)$
+corresponds to the following run of the KK algorithm:
+\begin{eqnarray*}
+A = (10,8,7,6,5) & \rightarrow & A' = (10,15,0,6,5) \\
+(10,15,0,6,5) & \rightarrow & (0,5,0,6,5) \\
+ & \rightarrow & (0,0,0,1,5) \\
+ & \rightarrow & (0,0,0,0,4) \\
+\end{eqnarray*}
+Hence in this case the solution $P$ has a residue of 4.
+
+Notice that all possible solution sequences $S$ can be generated using this prepartition representation, as any split of $A$ into
+sets $A_1$ and $A_2$ can be obtained by initially assigning 
+$p_i$ to 1 for all $a_i \in A_1$ and similarly assigning 
+$p_i$ to 2 for all $a_i \in A_2$.
+
+A random solution can be obtained by generating a sequence of $n$
+values in the range $[1,n]$ and using this for $P$.  Thinking of all
+possible solutions as a state space, a natural way to define neighbors
+of a solution $P$ is as the set of all solutions that differ from $P$
+in just one place.  The interpretation is that we change the
+prepartitioning by changing which partition one element lies in.
+A {\em random move} on this state space can be defined as follows.
+Choose two random indices $i$ and $j$ from $[1,n]$ with $p_i
+\neq j$ and set $p_i$ to $j$.
+
+You will try each of the following three algorithms for both
+representations (and their corresponding definitions of neighboring solutions):
+
+\begin{itemize}
+\item Repeated random:  repeatedly generate random solutions
+to the problem, as determined by the representation.
+\smallskip
+\begin{tabbing}
+\quad \quad \quad \= Start \= with a random solution $S$ \\
+\> {\bf for} iter = 1 to max\_iter \\
+\> \> $S' =$ a random solution \\
+\> \> {\bf if} residue$(S') <$ residue$(S)$ {\bf then} $S = S'$ \\
+\> return $S$
+\end{tabbing}
+\smallskip
+\item Hill climbing:  generate a random solution to the problem, and
+then attempt to improve it through moves to better neighbors.
+\smallskip
+\begin{tabbing}
+\quad \quad \quad \= Start \= with a random solution $S$ \\
+\> {\bf for} iter = 1 to max\_iter \\
+\> \> $S' =$ a random neighbor of $S$ \\
+\> \> {\bf if} residue$(S') <$ residue$(S)$ {\bf then} $S = S'$ \\
+\> return $S$
+\end{tabbing}
+\smallskip
+\item Simulated annealing:  generate a random solution to the problem, and
+then attempt to improve it through moves to neighbors, that are not always 
+better.
+\begin{tabbing}
+\quad \quad \quad \= Start \= with a random solution $S$ \\
+\> $S'' = S$ \\
+\> {\bf for} iter = 1 to max\_iter \\
+\> \> $S' =$ a random neighbor of $S$ \\
+\> \> {\bf if} residue$(S') <$ residue$(S)$ {\bf then} $S = S'$ \\
+\> \> {\bf else} $S = S'$ with probability exp($-$(res($S'$)-res($S$))/T(iter))\\
+\> \> {\bf if} residue$(S) <$ residue$(S'')$ {\bf then} $S'' = S$ \\
+\> return $S''$
+\end{tabbing}
+\smallskip
+Note that for simulated annealing we have the code return the best
+solution seen thus far.
+\end{itemize}
+
+You will run experiments on sets of 100 integers, with each integer
+being a random number chosen uniformly from the range $[1,10^{12}]$.
+Note that these are big numbers.  You should use 64 bit integers.  Pay
+attention to things like whether your random number generator works for
+ranges this large!
+
+Below is the main problem of the assignment.
+
+\smallskip 
+
+{\bf First, write a routine of the form 
+
+\noindent \$ ./kk inputfile 
+
+where you may assume inputfile is a list of 100 (unsorted) integers,
+one per line, and the desired output is the residue obtained by running
+Karmarkar-Karp with these 100 numbers as input.}
+
+If you wish to use a programming language other than Python, C++, C, Java, and Go, please contact us first. You should either submit a single source file named one of kk.py, kk.c, kk.cpp, kk.java, Kk.java, or kk.go, or multiple source files with a makefile (named makefile or Makefile). We'll run typical commands to compile and execute your code, as in programming assignment 2.
+
+\smallskip 
+{\bf Second, generate 100 random instances of the problem as described above.
+For each instance, find the result from using the Karmarkar-Karp
+algorithm.  Also, for each instance, run a repeated random, a hill
+climbing, and a simulated annealing algorithm, using both
+representations, each for at least 25,000 iterations.  Give tables and/or
+graphs
+clearly demonstrating the results -- give both the numerical results,
+and the time taken by the algorithms.  Compare the results and discuss.}
+\smallskip 
+
+For the simulated annealing algorithm, you must choose a {\em cooling
+schedule.}  That is, you must choose a function T(iter).  We suggest
+T(iter) = $10^{10}(0.8)^{\lfloor \mbox{iter} / 300 \rfloor}$ for
+numbers in the range $[1,10^{12}]$, but you can experiment with this
+as you please.  
+
+Note that, in our random experiments, we began with a random initial
+starting point.
+
+{\bf Discuss briefly how you could use the solution from the
+Karmarkar-Karp algorithm as a starting point for the randomized
+algorithms, and suggest what effect that might have. 
+(No experiments are necessary, but feel free to try it.)}
+
+Finally, the following is entirely optional;  you'll get no credit for it.
+But if you want to try something else, it's interesting to do.
+
+{\bf (0 points, optional)}\footnote{We won't use this question for grades. Try it if you're interested. 
+It may be used for recommendations/TF hiring.}
+Can you design a BubbleSearch
+based heuristic for this problem?  You may want to read the
+BubbleSearch paper that is online at the course website, and then
+consider the following. The Karmarkar-Karp algorithm greedily takes
+the top two items at each step, takes their difference, and adds that
+difference back into the list of numbers.  A BubbleSearch variant
+would not necessarily take the top two items in the list, but
+proabilistically take two items close to the top.  (For instance, you
+might ``flip coins'' until the the first heads; the number of flips
+(modulo the number of items) gives your first item.  Then do the same,
+starting from where you left off, to obtain the second item.  Once
+you're down to a small number of numbers -- five to ten -- you might
+want to switch back to the standard Karmarkar-Karp algorithm -- or
+even do something exhaustive.)  Unlike the original Karmarkar-Karp
+algorithm, you can repeat this algorithm multiple times and get
+different answers, much like the Repeated Random algorithm you tried
+for the assignment.  Test your BubbleSearch algorithm against the
+other algorithms you have tried.  How does it compare?
+
+\end{document}
+
+
+
+
